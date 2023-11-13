@@ -56,7 +56,7 @@ export default function MyGames() {
                                             alignItems: 'center',
                                             width: '100%',
                                         }} >
-                                            <div className="flex-row md:w-9/12 w-7/12 mr-2">
+                                            <div className="flex-row md:w-9/12 w-10/12 mr-2">
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center">
 
@@ -87,10 +87,10 @@ export default function MyGames() {
 
 
                                             <Divider orientation="vertical" flexItem />
-                                            <div className="ml-2">
-                                                <Typography variant="subtitle2" textAlign="center" >
+                                            <div className="ml-2 md:w-4/12  w-3/12">
+                                                <Typography variant="caption" textAlign="center" >
                                                     Today
-                                                </Typography>
+                                                </Typography><br />
                                                 <Typography variant="caption" >
                                                     Tue, 7 Nov
                                                 </Typography>
@@ -114,7 +114,7 @@ export default function MyGames() {
                                             alignItems: 'center',
                                             width: '100%',
                                         }} >
-                                            <div className="flex-row md:w-9/12 w-7/12 mr-2">
+                                            <div className="flex-row md:w-9/12 w-10/12 mr-2">
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center">
 
@@ -145,7 +145,7 @@ export default function MyGames() {
 
 
                                             <Divider orientation="vertical" flexItem />
-                                            <div className="ml-2">
+                                            <div className="ml-2 w-3/12">
                                                 <Typography variant="subtitle2" textAlign="center" >
                                                     Today
                                                 </Typography>
