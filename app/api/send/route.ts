@@ -9,14 +9,14 @@ export async function POST( request: Request,
   try {
     const {email} = await request.json();
     
-    const data = await resend.emails.send({
-      from: 'Acme <onboarding@resend.dev>',
-      to: [`${email}`],
-      subject: 'Confirm Your Signup',
-      react: EmailTemplate({ firstName: 'John' }),
-    });
+    // const data = await resend.emails.send({
+    //   from: 'Acme <onboarding@resend.dev>',
+    //   to: [`${email}`],
+    //   subject: 'Confirm Your Signup',
+    //   react: EmailTemplate({ firstName: 'John' }),
+    // });
 
-    return NextResponse.json(data);
+    // return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json({ error });
   }

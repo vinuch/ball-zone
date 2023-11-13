@@ -3,7 +3,7 @@
 import { Avatar, Button, Container, CssBaseline, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Radio, RadioGroup, Stack } from '@mui/material';
 import Paper from '@mui/material/Paper';
 import styled from '@emotion/styled'
-import SelectPlayer from './components/select-player';
+// import SelectPlayer from './components/select-player';
 import React, { useEffect, useState } from 'react';
 
 import PersonIcon from '@mui/icons-material/Person';
