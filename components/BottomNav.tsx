@@ -35,8 +35,8 @@ export default function BottomNav() {
         >
 
             <BottomNavigationAction label="Profile" icon={<Person2 />} href="/profile" component={Link} />
-            <BottomNavigationAction label="Leagues" icon={<People />} href="/leagues" component={Link} />
-            <BottomNavigationAction label="Scoreboard" icon={<ContentPaste />} href="/scoreboard" component={Link} />
+            {/* <BottomNavigationAction label="Leagues" icon={<People />} href="/leagues" component={Link} />
+            <BottomNavigationAction label="Scoreboard" icon={<ContentPaste />} href="/scoreboard" component={Link} /> */}
         </BottomNavigation>
     )
 }
