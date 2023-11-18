@@ -25,7 +25,6 @@ export default function SignUpForm() {
 
 
         await supabase.auth.signUp({ ...user, options: { emailRedirectTo: `${location.origin}/auth/callback` } });
-
         router.push('/profile')
 
     };

@@ -4,11 +4,11 @@ import supabase from "@/lib/supabase";
 import { Box, Button, Checkbox, FormControlLabel, Grid, TextField } from "@mui/material";
 import Link from '@mui/material/Link';
 
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 
 export default function SignInForm() {
-
+    const router = useRouter()
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -25,7 +25,7 @@ export default function SignInForm() {
         }
 
         await supabase.auth.signInWithPassword({ ...user });
-        redirect('/profile')
+        router.push('/profile')
 
     };
 

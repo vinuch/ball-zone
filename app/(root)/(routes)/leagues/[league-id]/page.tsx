@@ -9,7 +9,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import CircularProgress from '@mui/material/CircularProgress';
 import { usePathname } from 'next/navigation';
-interface Game {
+export interface Game {
     away_team_id: string | null
     created_at: string
     first_quarter_score: number | null
@@ -29,7 +29,7 @@ interface Team {
     logo: string | null
     name: string | null
 }
-interface Player {
+export interface Player {
     auth_user: string | null
     created_at: string
     DOB: string | null
@@ -78,7 +78,7 @@ function a11yProps(index: number) {
 
 export default function LeagueId() {
     const pathname = usePathname()
-    console.log(pathname)
+    // console.log(pathname.split('/')[2])
     const [games, setGames] = React.useState<Game[] | any[]>([])
     const [teams, setTeams] = React.useState<Team[] | any[]>([])
     const [players, setPlayers] = React.useState<Player[] | any[]>([])
@@ -137,16 +137,18 @@ export default function LeagueId() {
         const fetchAveragePoints = async () => {
             let { data } = await supabase
                 .rpc('getaveragepoints')
-            console.log(data)
         }
 
         const fetchPlayers = async () => {
             let { data: players } = await supabase
-                .from('Users')
+                .from('team_user')
                 .select(`
                 *,
-                team:team_user!user_id(team_id)
+                user:Users!user_id(*),
+                team:teams!team_id(*)
+       
               `)
+                .eq("league_id", pathname.split('/')[2])
 
             setPlayers(players!)
         }
@@ -162,7 +164,6 @@ export default function LeagueId() {
 
 
     const getTeam = (team_id: string) => {
-        console.log(team_id)
         return teams.find(item => item.id === team_id)
     }
     const [value, setValue] = React.useState(0);
@@ -293,9 +294,9 @@ export default function LeagueId() {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {teams.map((row) => (
+                            {teams.map((row, idx) => (
                                 <TableRow
-                                    key={row.name}
+                                    key={idx}
                                     sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                 >
                                     <TableCell component="th" scope="row">
@@ -318,29 +319,29 @@ export default function LeagueId() {
 
                     <Grid container >
                         {
-                            players.map(item => {
-                                let team = getTeam(item.team[0].team_id)
+                            players.map((item, idx) => {
+                                
                                 return (
-                                    <Grid item key={item.id} xs={12} md={6} lg={3}>
-                                        <Card >
+                                    <Grid item key={idx} xs={12} md={6} lg={3} xl={2}>
+                                        <Card sx={{m: 2}}>
                                             <CardMedia
                                                 component="img"
                                                 sx={{ height: 240 }}
-                                                image={item.profile_img}
-                                                title={item.name}
+                                                image={item.user.profile_img}
+                                                title={item.user.name}
                                             />
                                             <CardContent>
                                                 <Typography gutterBottom variant="h5" component="div">
-                                                    {item.first_name} {item.last_name}
+                                                    {item.user.first_name} {item.user.last_name}
                                                 </Typography>
                                                 <Typography variant="body2" color="text.secondary">
-                                                    {item.position}
+                                                    {item.user.position || '-'}
                                                 </Typography>
 
                                                 <div className="flex gap-2 my-2">
-                                                    <Avatar alt="Remy Sharp" src={team?.logo}   sx={{ width: 24, height: 24 }} />
+                                                    <Avatar alt="Remy Sharp" src={item.team?.logo} sx={{ width: 24, height: 24 }} />
                                                     <Typography variant="body2" color="text.secondary">
-                                                        {team?.name}
+                                                        {item.team?.name}
                                                     </Typography>
                                                 </div>
 

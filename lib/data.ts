@@ -14,7 +14,6 @@ export async function signin(d: AuthUser) {
 }
 
 export async function getUser() {
-  console.log("hier");
   return await supabase.auth.getUser();
 }
 
