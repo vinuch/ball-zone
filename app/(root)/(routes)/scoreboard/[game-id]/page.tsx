@@ -120,11 +120,24 @@ export default function Scoreboard() {
     const [awayFoulCount, setAwayFoulCount] = useState(0)
     const [game, setGame] = useState<Game | {}>()
     const [homePlayers, setHomePlayers] = useState<Player[] | []>([])
+    const [homePlayersStats, setHomePlayersStats] = useState<Player[] | []>([])
     const [awayPlayers, setAwayPlayers] = useState<Player[] | []>([])
+    const [awayPlayersStats, setAwayPlayersStats] = useState<Player[] | []>([])
+
     const [activeTeam, setActiveTeam] = useState('')
     const [activeStat, setActiveStat] = useState({})
 
     const [selectedValue, setSelectedValue] = React.useState(emails[1]);
+
+    const home_ongoing_score = () => {
+        return homePlayersStats.reduce(  (accumulator, stat) => accumulator + stat.points,
+        0,)
+    }
+
+    const away_ongoing_score = () => {
+        return awayPlayersStats.reduce(  (accumulator, stat) => accumulator + stat.points,
+        0,)
+    }
 
     const pathname = usePathname()
 
@@ -151,7 +164,23 @@ export default function Scoreboard() {
     }
 
     useEffect(() => {
-        const fetchTeamPlayers = async (game_id: string, team_id: string) => {
+        const fetchTeamPlayers = async (team_id: string) => {
+            let { data: players, error } = await supabase
+                .from('team_user')
+
+                .select(`
+                *,
+                player:Users!user_id(*)
+
+              `)
+                // .eq('game_id', game_id)
+                .eq('team_id', team_id);
+
+
+            return players;
+
+        }
+        const fetchTeamPlayersStats = async (game_id: string, team_id: string) => {
             console.log(game_id)
             let { data: players, error } = await supabase
                 .from('game_player_stats')
@@ -180,8 +209,11 @@ export default function Scoreboard() {
               `).eq('id', gameId).then(res => {
                     let game = res.data![0];
                     setGame(game);
-                    fetchTeamPlayers(game.id, game.home_team_id).then(res => setHomePlayers(res))
-                    fetchTeamPlayers(game.id, game.away_team_id).then(res => setAwayPlayers(res))
+                    fetchTeamPlayers(game.home_team_id).then(res => setHomePlayers(res))
+                    fetchTeamPlayers(game.away_team_id).then(res => setAwayPlayers(res))
+
+                    fetchTeamPlayersStats(game.id, game.home_team_id).then(res => setHomePlayersStats(res))
+                    fetchTeamPlayersStats(game.id, game.away_team_id).then(res => setAwayPlayersStats(res))
                 });
 
 
@@ -214,25 +246,89 @@ export default function Scoreboard() {
 
     const handleClose = async (player: any) => {
         setOpen(false);
+        console.log(homePlayersStats)
         // setSelectedValue(value);
 
 
         //make api call
 
         // check if value is in game_player_stats
-        if (player) {
-            const { data, error } = await supabase
-                .from('game_player_stats')
-                .update([
-                    { [activeStat.stat]: player[activeStat.stat] + activeStat.incrementBy },
-                ])
-                .eq('player_id', player.player_id)
-                .select()
-            if (data) {
-                let updatedStat = data[0]
-                if (activeTeam == 'home') {
-                    let _player = { ...homePlayers.find(item => item.id == updatedStat.id), ...updatedStat }
-                    setHomePlayers([...homePlayers.filter(item => item.id !== updatedStat.id), _player])
+        if (activeTeam == 'home') {
+            if (player) {
+                const playerStat = homePlayersStats.find(stat => stat.player_id == player.user_id) || null
+                console.log(player)
+                if (playerStat) {
+                    const { data, error } = await supabase
+                        .from('game_player_stats')
+                        .update([
+                            { [activeStat.stat]: playerStat[activeStat.stat] + activeStat.incrementBy, player_id: player.user_id, team_id: player.team_id, game_id: gameId, league_id: game!.league_id },
+                        ])
+                        .eq('id', Number(playerStat.id))
+                        .select()
+
+                    if (data) {
+                        let updatedStat = data[0]
+                        if (updatedStat) {
+                            let _player = { ...homePlayersStats.find(item => item.id == updatedStat.id), ...{ ...updatedStat, player: player.player } }
+                            setHomePlayersStats([...homePlayersStats.filter(item => item.id !== updatedStat.id), _player])
+                        }
+                    }
+                } else {
+                    const { data, error } = await supabase
+                        .from('game_player_stats')
+                        .insert([
+                            { [activeStat.stat]: (player[activeStat.stat] || 0) + activeStat.incrementBy, player_id: player.user_id, team_id: player.team_id, game_id: gameId, league_id: game!.league_id },
+                        ])
+                        .select()
+
+                    if (data) {
+                        let updatedStat = data[0]
+                        if (updatedStat) {
+                            let _player = { ...homePlayersStats.find(item => item.id == updatedStat.id), ...{ ...updatedStat, player: player.player } }
+                            setHomePlayersStats([...homePlayersStats.filter(item => item.id !== updatedStat.id), _player])
+                        }
+                    }
+
+
+                }
+            }
+        } else if (activeTeam == 'away') {
+            if (player) {
+                const playerStat = awayPlayersStats.find(stat => stat.player_id == player.user_id) || null
+                console.log(player)
+                if (playerStat) {
+                    const { data, error } = await supabase
+                        .from('game_player_stats')
+                        .update([
+                            { [activeStat.stat]: playerStat[activeStat.stat] + activeStat.incrementBy, player_id: player.user_id, team_id: player.team_id, game_id: gameId, league_id: game!.league_id },
+                        ])
+                        .eq('id', Number(playerStat.id))
+                        .select()
+
+                    if (data) {
+                        let updatedStat = data[0]
+                        if (updatedStat) {
+                            let _player = { ...awayPlayersStats.find(item => item.id == updatedStat.id), ...{ ...updatedStat, player: player.player } }
+                            setAwayPlayersStats([...awayPlayersStats.filter(item => item.id !== updatedStat.id), _player])
+                        }
+                    }
+                } else {
+                    const { data, error } = await supabase
+                        .from('game_player_stats')
+                        .insert([
+                            { [activeStat.stat]: (player[activeStat.stat] || 0) + activeStat.incrementBy, player_id: player.user_id, team_id: player.team_id, game_id: gameId, league_id: game!.league_id },
+                        ])
+                        .select()
+
+                    if (data) {
+                        let updatedStat = data[0]
+                        if (updatedStat) {
+                            let _player = { ...awayPlayersStats.find(item => item.id == updatedStat.id), ...{ ...updatedStat, player: player.player } }
+                            setAwayPlayersStats([...awayPlayersStats.filter(item => item.id !== updatedStat.id), _player])
+                        }
+                    }
+
+
                 }
             }
         }
@@ -251,7 +347,7 @@ export default function Scoreboard() {
     return (
         <ThemeProvider theme={darkTheme}>
 
-            <div className="h-screen w-screen flex justify-center">
+            <div className="h-auto w-screen flex justify-center">
                 <Container sx={{ marginY: 2, height: "100%" }}>
 
 
@@ -267,11 +363,11 @@ export default function Scoreboard() {
                             }
                         }}>
                         <div>
-                            <div className="text-center text-4xl font-bold my-4">10:00 <span className="text-red-600">25</span></div>
-                            <p className="text-center">First Quater</p>
+                            {/* <div className="text-center text-4xl font-bold my-4">10:00 <span className="text-red-600">25 (WIP)</span></div>
+                            <p className="text-center">First Quater</p> */}
                             <div className="flex my-6 items-center justify-center flex-wrap w-full">
                                 <div className="w-full my-6 md:w-5/12">
-                                    <p className="text-center text-3xl font-bold">{game.home_final_score}</p>
+                                    <p className="text-center text-3xl font-bold">{home_ongoing_score()}</p>
                                     <p className="text-center text-slate-500 text-xl font-bold">{game.home_team.name}</p>
                                     <p className="text-center text-sm font-light">Home</p>
 
@@ -299,8 +395,11 @@ export default function Scoreboard() {
                                             <Button onClick={() => handleClickOpen('home', 'steals', 1)} color="error" size="small" variant="outlined">
                                                 steal
                                             </Button>
+                                            <Button onClick={() => handleClickOpen('home', 'fouls', 1)} color="error" size="small" variant="outlined">
+                                                foul
+                                            </Button>
                                         </Stack>
-                                        <div className="flex items-center justify-center gap-4 my-4">
+                                        {/* <div className="flex items-center justify-center gap-4 my-4">
                                             <p className="font-medium">Fouls</p>
                                             <div className="flex gap-2">
                                                 {
@@ -314,40 +413,44 @@ export default function Scoreboard() {
                                             <IconButton disabled={homeFoulCount >= 5} onClick={() => homeFoulCount < 5 ? setHomeFoulCount(homeFoulCount + 1) : ''} color="warning" sx={{ bgcolor: "blue" }}>
                                                 <AddIcon />
                                             </IconButton>
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </div>
                                 <p className="text-center w-full md:w-10 font-bold">VS</p>
                                 <div className="w-full my-6 md:w-5/12">
-                                    <p className="text-center text-3xl font-bold">{game.away_final_score}</p>
+                                    <p className="text-center text-3xl font-bold">{away_ongoing_score()}</p>
                                     <p className="text-center text-slate-500 text-xl font-bold">{game.away_team.name}</p>
                                     <p className="text-center text-sm font-light">Away</p>
 
                                     <div className="my-6">
                                         <Stack spacing={1} direction="row" justifyContent="center">
-                                            <Button onClick={() => handleClickOpen('away')} color="error" size="small" variant="outlined">
+                                            <Button onClick={() => handleClickOpen('away', 'points', 1)} color="error" size="small" variant="outlined">
                                                 +1
                                             </Button>
-                                            <Button onClick={() => handleClickOpen('away')} color="error" size="small" variant="outlined">
+                                            <Button onClick={() => handleClickOpen('away', 'points', 2)} color="error" size="small" variant="outlined">
                                                 +2
                                             </Button>
-                                            <Button onClick={() => handleClickOpen('away')} color="error" size="small" variant="outlined">
+                                            <Button onClick={() => handleClickOpen('away', 'points', 3)} color="error" size="small" variant="outlined">
                                                 +3
                                             </Button>
                                         </Stack>
 
                                         <Stack spacing={1} direction="row" justifyContent="center" className="my-3">
-                                            <Button onClick={() => handleClickOpen('away')} color="error" size="small" variant="outlined">
+                                            <Button onClick={() => handleClickOpen('away', 'rebounds', 1)} color="error" size="small" variant="outlined">
                                                 rebound
                                             </Button>
-                                            <Button onClick={() => handleClickOpen('away')} color="error" size="small" variant="outlined">
+                                            <Button onClick={() => handleClickOpen('away', 'blocks', 1)} color="error" size="small" variant="outlined">
                                                 block
                                             </Button>
-                                            <Button onClick={() => handleClickOpen('away')} color="error" size="small" variant="outlined">
+                                            <Button onClick={() => handleClickOpen('away', 'steals', 1)} color="error" size="small" variant="outlined">
                                                 steal
                                             </Button>
+                                            <Button onClick={() => handleClickOpen('away', 'fouls', 1)} color="error" size="small" variant="outlined">
+                                                foul
+                                            </Button>
+                                            
                                         </Stack>
-                                        <div className="flex items-center justify-center gap-4 my-4">
+                                        {/* <div className="flex items-center justify-center gap-4 my-4">
                                             <p className="font-medium">Fouls</p>
                                             <div className="flex gap-2">
                                                 {
@@ -361,7 +464,7 @@ export default function Scoreboard() {
                                             <IconButton disabled={awayFoulCount >= 5} onClick={() => awayFoulCount < 5 ? setAwayFoulCount(awayFoulCount + 1) : ''} color="warning" sx={{ bgcolor: "blue" }}>
                                                 <AddIcon />
                                             </IconButton>
-                                        </div>
+                                        </div> */}
                                     </div>
 
                                 </div>
@@ -391,20 +494,20 @@ export default function Scoreboard() {
                                             </TableHead>
                                             <TableBody>
 
-                                                {homePlayers && homePlayers.map(row => (
+                                                {homePlayersStats && homePlayersStats.map(row => (
                                                     <TableRow
                                                         key='1'
                                                         sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                                     >
                                                         <TableCell component="th" scope="row">
-                                                            vince
+                                                            {row.player.first_name}
                                                         </TableCell>
-                                                        <TableCell align="right">{row.points}</TableCell>
-                                                        <TableCell align="right">{row.rebounds}</TableCell>
-                                                        <TableCell align="right">{row.assists}</TableCell>
-                                                        <TableCell align="right">{row.blocks}</TableCell>
-                                                        <TableCell align="right">{row.steals}</TableCell>
-                                                        <TableCell align="right">{row.steals}</TableCell>
+                                                        <TableCell align="right">{row.points || 0}</TableCell>
+                                                        <TableCell align="right">{row.rebounds || 0}</TableCell>
+                                                        <TableCell align="right">{row.assists || 0}</TableCell>
+                                                        <TableCell align="right">{row.blocks || 0}</TableCell>
+                                                        <TableCell align="right">{row.steals || 0}</TableCell>
+                                                        <TableCell align="right">{row.fouls || 0}</TableCell>
 
                                                     </TableRow>
                                                 ))}
@@ -443,20 +546,20 @@ export default function Scoreboard() {
                                             <TableBody>
                                                 {/* {teams.map((row) => ( */}
 
-                                                {awayPlayers && awayPlayers.map(row => (
+                                                {awayPlayersStats && awayPlayersStats.map(row => (
                                                     <TableRow
                                                         key='1'
                                                         sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                                     >
                                                         <TableCell component="th" scope="row">
-                                                            vince
+                                                            {row.player.first_name}
                                                         </TableCell>
-                                                        <TableCell align="right">{row.points}</TableCell>
-                                                        <TableCell align="right">{row.rebounds}</TableCell>
-                                                        <TableCell align="right">{row.assists}</TableCell>
-                                                        <TableCell align="right">{row.blocks}</TableCell>
-                                                        <TableCell align="right">{row.steals}</TableCell>
-                                                        <TableCell align="right">{row.steals}</TableCell>
+                                                        <TableCell align="right">{row.points || 0}</TableCell>
+                                                        <TableCell align="right">{row.rebounds || 0}</TableCell>
+                                                        <TableCell align="right">{row.assists || 0}</TableCell>
+                                                        <TableCell align="right">{row.blocks || 0}</TableCell>
+                                                        <TableCell align="right">{row.steals || 0}</TableCell>
+                                                        <TableCell align="right">{row.fouls || 0}</TableCell>
 
                                                     </TableRow>
                                                 ))}

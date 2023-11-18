@@ -24,8 +24,8 @@ export default function SignUpForm() {
         }
 
 
-        await supabase.auth.signUp({ ...user, options: { emailRedirectTo: `${location.origin}/auth/callback` } });
-        router.push('/profile')
+        await supabase.auth.signUp({ ...user, options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback` } });
+        router.push('/sign-in')
 
     };
 

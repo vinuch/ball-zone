@@ -6,7 +6,7 @@ export interface AuthUser {
 }
 
 export async function signup(d: AuthUser) {
-  return await supabase.auth.signUp({...d, options: {emailRedirectTo: 'http://localhost:3000/auth/callback'}});
+  return await supabase.auth.signUp({...d, options: {emailRedirectTo: `${process.env}/sign-in`}});
 }
 
 export async function signin(d: AuthUser) {
