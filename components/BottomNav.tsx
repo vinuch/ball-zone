@@ -18,7 +18,7 @@ export default function BottomNav() {
         } else if (path == 'leagues') {
             setValue(1)
 
-        } else if (path == 'scoreboard') {
+        } else if (path == 'games') {
             setValue(2)
 
         }
@@ -35,8 +35,8 @@ export default function BottomNav() {
         >
 
             <BottomNavigationAction label="Profile" icon={<Person2 />} href="/profile" component={Link} />
-            {/* <BottomNavigationAction label="Leagues" icon={<People />} href="/leagues" component={Link} />
-            <BottomNavigationAction label="Scoreboard" icon={<ContentPaste />} href="/scoreboard" component={Link} /> */}
+            <BottomNavigationAction label="Leagues" icon={<People />} href="/leagues" component={Link} />
+            <BottomNavigationAction label="Games" icon={<ContentPaste />} href="/games" component={Link} />
         </BottomNavigation>
     )
 }

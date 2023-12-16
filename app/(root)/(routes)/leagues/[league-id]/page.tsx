@@ -79,9 +79,11 @@ function a11yProps(index: number) {
 export default function LeagueId() {
     const pathname = usePathname()
     // console.log(pathname.split('/')[2])
-    const [games, setGames] = React.useState<Game[] | any[]>([])
+    const [currentLeague, setCurrentLeague] = React.useState()
+    const [games, setGames] = React.useState<Game[] | any[]>(null)
     const [teams, setTeams] = React.useState<Team[] | any[]>([])
     const [players, setPlayers] = React.useState<Player[] | any[]>([])
+    
     // const supabase = createClientComponentClient()
     React.useEffect(() => {
         const fetchGames = async () => {
@@ -92,10 +94,21 @@ export default function LeagueId() {
                 home_team:teams!home_team_id(*),
                 away_team:teams!away_team_id(*)
 
-              `);
+              `).eq("league_id", pathname.split('/')[2]);
 
 
             setGames(Games!)
+        }
+        const fetchLeague = async () => {
+            let { data: League, error } = await supabase
+                .from('Leagues')
+                .select(`
+                name
+
+              `).eq("id", pathname.split('/')[2] );
+
+
+            setCurrentLeague(League![0])
         }
         const fetchTeams = async () => {
             let { data: Teams, error } = await supabase
@@ -153,6 +166,7 @@ export default function LeagueId() {
             setPlayers(players!)
         }
 
+        fetchLeague()
         fetchGames()
         fetchTeams()
         fetchAveragePoints()
@@ -172,7 +186,7 @@ export default function LeagueId() {
         setValue(newValue);
     };
 
-    if (!games.length) {
+    if (games == null) {
         return <div className="flex justify-center items-center h-full">
             <CircularProgress />
         </div>
@@ -327,7 +341,7 @@ export default function LeagueId() {
                                             <CardMedia
                                                 component="img"
                                                 sx={{ height: 240 }}
-                                                image={item.user.profile_img}
+                                                image={item.user.profile_img || '/profile-pic.png'}
                                                 title={item.user.name}
                                             />
                                             <CardContent>
