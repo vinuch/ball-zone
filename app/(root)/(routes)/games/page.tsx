@@ -1,6 +1,6 @@
 "use client"
 
-import { Autocomplete, Box, Button, Card, CardActionArea, CardContent, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControl, FormControlLabel, FormGroup, FormLabel, Grid, Input, MenuItem, OutlinedInput, Radio, RadioGroup, Select, SelectChangeEvent, TextField, Typography } from '@mui/material'
+import { Autocomplete, Box, Button, Card, CardActionArea, CardContent, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControl, FormControlLabel, FormGroup, FormLabel, Grid, Input, MenuItem, OutlinedInput, Radio, RadioGroup, Select, SelectChangeEvent, TextField, Typography, createFilterOptions } from '@mui/material'
 import React, { useEffect } from 'react'
 import Paper from '@mui/material/Paper';
 import Image from 'next/image';
@@ -50,12 +50,13 @@ export default function MyGames() {
     const [personName, setPersonName] = React.useState<string>('');
     const [homeTeam, setHomeTeam] = React.useState<string>('');
     const [awayTeam, setAwayTeam] = React.useState<string>('')
-    ;
+        ;
     const [homeTeamPlayers, setHomeTeamPlayers] = React.useState([]);
     const [awayTeamPlayers, setAwayTeamPlayers] = React.useState([]);
     const [newAwayTeam, setNewAwayTeam] = React.useState<object>({});
     const [newHomeTeam, setNewHomeTeam] = React.useState<object>({});
     const [players, setPlayers] = React.useState<[]>([]);
+    const [refree, setRefree] = React.useState<[]>([]);
 
     const [currentPlayersTeams, setCurrentPlayersTeams] = React.useState(null)
     const [appUser, setAppUser] = React.useState(null)
@@ -105,16 +106,14 @@ export default function MyGames() {
 
         const fetchPlayers = async () => {
             let { data: players } = await supabase
-                .from('team_user')
+                .from('Users')
                 .select(`
-                *,
-                user:Users!user_id(*),
-                team:teams!team_id(*)
+                *
        
               `)
-            console.log(players?.map(item => item.user))
+            // console.log(players?.map(item => item.user)) 
 
-            setPlayers(players?.map(item => item.user))
+            setPlayers(players?.map(item => item))
         }
 
         fetchPlayers()
@@ -155,7 +154,6 @@ export default function MyGames() {
                 away_team:teams!away_team_id(*)
 
               `)
-                .or(`home_team_id.in.(${teams}),away_team_id.in.(${teams})`)
 
 
 
@@ -168,10 +166,52 @@ export default function MyGames() {
     }, [currentPlayersTeams])
 
 
-    const handleCreate = () => {
-        console.log(newHomeTeam, newAwayTeam, homeTeamPlayers, awayTeamPlayers)
+    const handleCreate = async () => {
+        console.log(newHomeTeam, newAwayTeam, homeTeamPlayers, awayTeamPlayers, refree)
+
+        //create not existing users 
+        let data = []
+        // .filter(item => item.includes('(new)')).map(t => t.slice(0, -5))
+        // .filter(item => item.includes('(new)')).map(t => t.slice(0, -5))
+        let l = [...homeTeamPlayers].forEach(item => data.push({ first_name: item, team: 'home' }))
+        let d = [...awayTeamPlayers].forEach(item => data.push({ first_name: item, team: 'away' }))
+        console.log(data)
+
+        if (data.length) {
+            const [team, first_name] = data
+            supabase
+                .from('Users')
+                .insert(data.filter(item => item.first_name.includes('(new)')).map(item => { return {first_name: item.first_name.slice(0, -5)}})).select().then(userRes => {
+                    userRes.data.forEach(item => {
+                        data.find(p => p.first_name === `${item.first_name}(new)`).id = item.user_id
+                    })
+                    supabase
+                        .from('teams')
+                        .insert([newHomeTeam, newAwayTeam])
+                        .select().then(async teamRes => {
+                            console.log({ home_team_id: teamRes.data[0].id, away_team_id: teamRes.data[1].id },data)
+
+                            await supabase
+                                .from('team_user')
+                                .insert(data.map(item => { return { team_id: item.team === 'home' ? teamRes.data[0].id : teamRes.data[1].id, user_id: item.id || item.first_name } }))
+                                .select()
+                            await supabase
+                                .from('Games')
+                                .insert({ home_team_id: teamRes.data[0].id, away_team_id: teamRes.data[1].id, referee: refree })
+                                .select()
+                        })
+                })
+        }
+        if (newHomeTeam.name && newAwayTeam.name) {
+
+
+
+        }
+
+
     }
 
+    const filter = createFilterOptions<FilmOptionType>();
     return (
         <div className="p-4">
 
@@ -197,7 +237,7 @@ export default function MyGames() {
                                                                 {/* <Typography variant="subtitle1" >
                         img
                     </Typography> */}
-                                                                <Image width={20} height={20} className=" mr-2" alt="Empty" src={game.home_team?.logo} />
+                                                                {game.home_team?.logo && <Image width={20} height={20} className=" mr-2" alt="Empty"  src={game.home_team?.logo} />}
                                                                 <Typography variant="subtitle1" >
                                                                     {game.home_team?.name}
                                                                 </Typography>
@@ -208,7 +248,9 @@ export default function MyGames() {
                                                         </div>
                                                         <div className="flex justify-between items-center">
                                                             <div className="flex items-center">
-                                                                <Image width={20} height={20} className=" mr-2" alt="Empty" src={game.away_team?.logo} />
+                                                            {game.away_team?.logo && <Image width={20} height={20} className=" mr-2" alt="Empty" src={game.away_team?.logo} />}
+
+                                                                {/*  */}
                                                                 <Typography variant="subtitle1" >
                                                                     {game.away_team?.name}
                                                                 </Typography>
@@ -254,98 +296,247 @@ export default function MyGames() {
                         </DialogContentText>
                         <div className="w-full">
                             {/* <FormControl> */}
-                                <div className="my-4 w-full">
-                                    <FormLabel id="type-radio-buttons-group-label">Type</FormLabel>
-                                    <RadioGroup
-                                        aria-labelledby="type-radio-buttons-group-label"
-                                        defaultValue="pickup"
-                                        value={newGame.type}
-                                        onChange={(e) => setNewGame({ ...newGame, type: e.target.value })}
-                                        name="radio-buttons-group"
-                                    >
-                                        <FormControlLabel value="pickup" control={<Radio />} label="Pickup" />
-                                        {/* <FormControlLabel value="league" control={<Radio />} label="League Fixture" /> */}
+                            <div className="my-4 w-full">
+                                <FormLabel id="type-radio-buttons-group-label">Type</FormLabel>
+                                <RadioGroup
+                                    aria-labelledby="type-radio-buttons-group-label"
+                                    defaultValue="pickup"
+                                    value={newGame.type}
+                                    onChange={(e) => setNewGame({ ...newGame, type: e.target.value })}
+                                    name="radio-buttons-group"
+                                >
+                                    <FormControlLabel value="pickup" control={<Radio />} label="Pickup" />
+                                    {/* <FormControlLabel value="league" control={<Radio />} label="League Fixture" /> */}
 
-                                    </RadioGroup>
+                                </RadioGroup>
+                                <h3 className="text-lg font-bold mb-2 mt-4">Home Team</h3>
+                                <TextField id="outlined-basic" sx={{ marginBottom: 2 }} label="Home Team Name" placeholder="Enter name for home team " variant="outlined" fullWidth onChange={e => setNewHomeTeam({ ...newHomeTeam, name: e.target.value })} />
 
-                                    <FormLabel id="home-team-name">Home Team</FormLabel> <br />
-                                    <FormControl>
 
-                                        <Input placeholder="Enter name for home team " className="w-full my-2" aria-labelledby="home-team-name" onChange={e => setNewHomeTeam({...newHomeTeam, name: e.target.value})} />
-                                    </FormControl>
-                                    <FormLabel id="home-team-name" className='block'>Home Team Players</FormLabel> <br />
+                                {/* <FormLabel id="home-team-name" className='block'>Home Team Players</FormLabel> <br /> */}
 
-                                    <Autocomplete
+                                <Autocomplete
                                     // value={homeTeamPlayers}
                                     // onValueChange={(event, newInputValue) => {
                                     //     setHomeTeamPlayers(newInputValue);
                                     //   }}
-                                        multiple
-                                        id="tags-standard"
-                                        options={players}
-                                        getOptionLabel={(option) => option?.first_name}
-                                        defaultValue={[players[0]]}
-                                        renderInput={(params, idx) => (
-                                            <FormGroup>
-                                                <TextField
-                                                    {...params}
-                                                    key={idx}
-                                                    variant="standard"
-                                                    label="Home Team Players"
-                                                    placeholder="Home players"
-                                                />
-                                            </FormGroup>
+                                    key='home'
 
-                                        )}
-                                    />
+                                    value={undefined}
+                                    onChange={(event, newValue) => {
+                                        if (typeof newValue === 'string') {
+                                            setHomeTeamPlayers(newValue)
+                                        } else if (newValue && newValue.inputValue) {
 
-                                    {/* AWAY TEAM  */}
-                                    <FormLabel id="away-team-name" className='block' sx={{marginTop: 2}}>Away Team</FormLabel> <br />
-                                    <FormControl>
+                                            setHomeTeamPlayers(newValue.inputValue)
+                                        } else {
 
-                                        <Input placeholder="Enter name for away team " className="w-full my-2" aria-labelledby="away-team-name" onChange={e => setNewAwayTeam({...newAwayTeam, name: e.target.value})}/>
+                                            console.log(newValue)
+                                            setHomeTeamPlayers(newValue.map(item => item.user_id || item.inputValue))
 
-                                        <FormLabel id="away-team-name">Away Team Players</FormLabel> <br />
-                                    </FormControl> 
-                                    <Autocomplete
+                                        }
+                                    }}
+                                    filterOptions={(options, params) => {
+                                        const filtered = filter(options, params);
+
+                                        const { inputValue } = params;
+                                        // Suggest the creation of a new value
+                                        const isExisting = options.some((option) => `${option.first_name} ${option.last_name}`.includes(inputValue));
+                                        if (inputValue !== '' && !isExisting) {
+                                            filtered.push({
+                                                inputValue: `${inputValue}(new)`,
+                                                first_name: `Add "${inputValue}"`,
+                                            });
+                                        }
+
+                                        return filtered;
+                                    }}
+                                    getOptionLabel={(option) => {
+                                        // Value selected with enter, right from the input
+
+                                        // console.log(option)
+                                        // return 'hi'
+                                        if (typeof option === 'string') {
+                                            return option;
+                                        }
+                                        // Add "xxx" option created dynamically
+                                        if (option.inputValue) {
+
+                                            return option.inputValue;
+                                        }
+
+
+                                        // Regular option
+                                        return option.first_name;
+                                    }}
+                                    renderOption={(props, option) => <li {...props}>{option.first_name}</li>}
+                                    freeSolo
+                                    selectOnFocus
+                                    clearOnBlur
+                                    handleHomeEndKeys
+                                    multiple
+                                    id="tags-standard"
+                                    options={players.filter(player => ![...awayTeamPlayers, refree].includes(player.user_id))}
+                                    defaultValue={undefined}
+                                    renderInput={(params, idx) => (
+                                        <TextField
+                                            {...params}
+                                            key={idx}
+                                            variant="standard"
+                                            label="Home Team Players"
+                                            placeholder="Home players"
+                                        />
+
+                                    )}
+                                />
+
+                                {/* AWAY TEAM  */}
+                                <h3 className="text-lg font-bold mb-2 mt-8">Away Team</h3>
+
+                                <TextField id="outlined-basic" sx={{ marginBottom: 2 }} label="Away Team Name" placeholder="Enter name for away team " variant="outlined" fullWidth onChange={e => setNewAwayTeam({ ...newAwayTeam, name: e.target.value })} />
+
+
+
+                                <Autocomplete
                                     // value={awayTeamPlayers}
+                                    key='away'
+                                    value={undefined}
+                                    onChange={(event, newValue) => {
+                                        if (typeof newValue === 'string') {
+                                            setAwayTeamPlayers(newValue.map(item => item.user_id))
+                                        } else if (newValue && newValue.inputValue) {
+                                            setAwayTeamPlayers(newValue.inputValue.map(item => item.user_id))
+                                        } else {
+                                            setAwayTeamPlayers(newValue.map(item => item.user_id || item.inputValue))
 
-                                        multiple
-                                        id="tags-standard"
-                                        options={players}
-                                        getOptionLabel={(option) => option?.first_name}
-                                        defaultValue={[players[0]]}
-                                        renderInput={(params, idx) => (
-                                            <FormGroup>
-                                                <TextField
-                                                    {...params}
-                                                    key={idx}
-                                                    variant="standard"
-                                                    label="Away Team Players"
-                                                    placeholder="Away players"
-                                                />
-                                            </FormGroup>
+                                        }
+                                    }}
+                                    filterOptions={(options, params) => {
+                                        const filtered = filter(options, params);
 
-                                        )}
-                                    />
-                                </div>
-                                {newGame.type == "league" && (
-                                    <>
-                                        <FormControl sx={{ m: 1 }}>
-                                            <FormLabel id="league-select-label">Select League</FormLabel>
+                                        const { inputValue } = params;
+                                        // Suggest the creation of a new value
+                                        const isExisting = options.some((option) => `${option.first_name} ${option.last_name}`.includes(inputValue));
+                                        if (inputValue !== '' && !isExisting) {
+                                            filtered.push({
+                                                inputValue: `${inputValue}(new)`,
+                                                first_name: `Add "${inputValue}"`,
+                                            });
+                                        }
+
+                                        return filtered;
+                                    }}
+                                    getOptionLabel={(option) => {
+                                        // Value selected with enter, right from the input
+
+                                        // console.log(option)
+                                        // return 'hi'
+                                        if (typeof option === 'string') {
+                                            return option;
+                                        }
+                                        // Add "xxx" option created dynamically
+                                        if (option.inputValue) {
+
+                                            return option.inputValue;
+                                        }
+
+
+                                        // Regular option
+                                        return option.first_name;
+                                    }}
+                                    renderOption={(props, option) => <li {...props}>{option.first_name}</li>}
+                                    freeSolo
+                                    selectOnFocus
+                                    clearOnBlur
+                                    handleHomeEndKeys
+                                    multiple
+                                    id="tags-standard"
+                                    options={players.filter(player => ![...homeTeamPlayers, refree].includes(player.user_id))}
+                                    defaultValue={undefined}
+                                    renderInput={(params, idx) => (
+                                        <TextField
+                                            {...params}
+                                            key={idx}
+                                            variant="standard"
+                                            label="Away Team Players"
+                                            placeholder="Away players"
+                                        // onKeyDown={handleClickEnter}
+                                        />
+
+                                    )}
+                                />
+
+                                <h3 className="text-lg font-bold mb-2 mt-8">Choose Refree</h3>
+
+                                <Autocomplete
+                                    key='ref'
+                                    value={undefined}
+                                    onChange={(event, newValue) => {
+                                        if (typeof newValue === 'string') {
+                                            setRefree(newValue)
+                                        } else if (newValue && newValue.inputValue) {
+
+                                            setRefree(newValue.inputValue)
+                                        } else {
+
+                                            console.log(newValue)
+                                            setRefree(newValue?.user_id)
+
+                                        }
+                                    }}
+                                    disablePortal
+                                    id="combo-box-demo"
+                                    options={players.filter(player => ![...homeTeamPlayers, ...awayTeamPlayers].includes(player.user_id))}
+                                    getOptionLabel={(option) => option?.first_name}
+                                    sx={{ width: 300, marginTop: 4 }}
+                                    renderInput={(params, idx) => <TextField key={idx} {...params} label="Refree" />}
+                                />
+                            </div>
+                            {newGame.type == "league" && (
+                                <>
+                                    <FormControl sx={{ m: 1 }}>
+                                        <FormLabel id="league-select-label">Select League</FormLabel>
+
+                                        <Select
+                                            aria-labelledby="league-select-label"
+                                            displayEmpty
+                                            value={personName}
+                                            onChange={handleChange}
+
+                                            inputProps={{ 'aria-label': 'Without label' }}
+                                        >
+                                            <MenuItem disabled value="">
+                                                <em>Placeholder</em>
+                                            </MenuItem>
+                                            {names.map((name) => (
+                                                <MenuItem
+                                                    key={name}
+                                                    value={name}
+
+                                                >
+                                                    {name}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+
+                                    <div className="flex items-center">
+
+                                        <FormControl sx={{ m: 1, maxWidth: 200 }}>
+                                            <FormLabel id="league-select-label">Select Home Team</FormLabel>
 
                                             <Select
                                                 aria-labelledby="league-select-label"
                                                 displayEmpty
-                                                value={personName}
-                                                onChange={handleChange}
+                                                value={homeTeam}
+                                                onChange={(e) => setHomeTeam(e.target.value)}
 
                                                 inputProps={{ 'aria-label': 'Without label' }}
                                             >
                                                 <MenuItem disabled value="">
-                                                    <em>Placeholder</em>
+                                                    <em>Home</em>
                                                 </MenuItem>
-                                                {names.map((name) => (
+                                                {teams.map((name) => (
                                                     <MenuItem
                                                         key={name}
                                                         value={name}
@@ -356,64 +547,36 @@ export default function MyGames() {
                                                 ))}
                                             </Select>
                                         </FormControl>
+                                        <span>vs</span>
+                                        <FormControl sx={{ m: 1, maxWidth: 200 }}>
+                                            <FormLabel id="league-select-label">Select Away Team</FormLabel>
 
-                                        <div className="flex items-center">
+                                            <Select
+                                                aria-labelledby="league-select-label"
+                                                displayEmpty
+                                                value={awayTeam}
+                                                onChange={(e) => setAwayTeam(e.target.value)}
 
-                                            <FormControl sx={{ m: 1, maxWidth: 200 }}>
-                                                <FormLabel id="league-select-label">Select Home Team</FormLabel>
+                                                inputProps={{ 'aria-label': 'Without label' }}
+                                            >
+                                                <MenuItem disabled value="">
+                                                    <em>Away</em>
+                                                </MenuItem>
+                                                {teams.map((name) => (
+                                                    <MenuItem
+                                                        key={name}
+                                                        value={name}
 
-                                                <Select
-                                                    aria-labelledby="league-select-label"
-                                                    displayEmpty
-                                                    value={homeTeam}
-                                                    onChange={(e) => setHomeTeam(e.target.value)}
-
-                                                    inputProps={{ 'aria-label': 'Without label' }}
-                                                >
-                                                    <MenuItem disabled value="">
-                                                        <em>Home</em>
+                                                    >
+                                                        {name}
                                                     </MenuItem>
-                                                    {teams.map((name) => (
-                                                        <MenuItem
-                                                            key={name}
-                                                            value={name}
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    </div>
 
-                                                        >
-                                                            {name}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                            <span>vs</span>
-                                            <FormControl sx={{ m: 1, maxWidth: 200 }}>
-                                                <FormLabel id="league-select-label">Select Away Team</FormLabel>
-
-                                                <Select
-                                                    aria-labelledby="league-select-label"
-                                                    displayEmpty
-                                                    value={awayTeam}
-                                                    onChange={(e) => setAwayTeam(e.target.value)}
-
-                                                    inputProps={{ 'aria-label': 'Without label' }}
-                                                >
-                                                    <MenuItem disabled value="">
-                                                        <em>Away</em>
-                                                    </MenuItem>
-                                                    {teams.map((name) => (
-                                                        <MenuItem
-                                                            key={name}
-                                                            value={name}
-
-                                                        >
-                                                            {name}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                        </div>
-
-                                    </>
-                                )}
+                                </>
+                            )}
 
 
 
