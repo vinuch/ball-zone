@@ -436,7 +436,7 @@ export default function Scoreboard() {
                                                 {
                                                     game?.referee == appUser?.user_id && (<div className="my-6">
 
-                                                        <Stack spacing="1" direction="row" justifyContent="center">
+                                                        <Stack spacing="1" direction="row" justifyContent="center" sx={{gap: 1}}>
                                                             <Button onClick={() => handleClickOpen('home', 'points', 1)} color="error" size="small" variant="outlined">
                                                                 +1
                                                             </Button>
@@ -448,17 +448,20 @@ export default function Scoreboard() {
                                                             </Button>
                                                         </Stack>
 
-                                                        <Stack spacing="1" direction="row" justifyContent="center" className="my-3">
-                                                            <Button onClick={() => handleClickOpen('home', 'rebounds', 1)} color="error" size="small" variant="outlined">
+                                                        <Stack spacing="2" direction="row" sx={{gap: 1}} justifyContent="center" className="my-3">
+                                                            <Button onClick={() => handleClickOpen('home', 'rebounds', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 rebound
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('home', 'blocks', 1)} color="error" size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('home', 'assists', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                                assists
+                                                            </Button>
+                                                            <Button onClick={() => handleClickOpen('home', 'blocks', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 block
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('home', 'steals', 1)} color="error" size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('home', 'steals', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 steal
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('home', 'fouls', 1)} color="error" size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('home', 'fouls', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 foul
                                                             </Button>
                                                         </Stack>
@@ -489,29 +492,32 @@ export default function Scoreboard() {
                                                 {
                                                     game?.referee == appUser?.user_id &&
                                                     <div className="my-6">
-                                                        <Stack spacing="1" direction="row" justifyContent="center">
-                                                            <Button onClick={() => handleClickOpen('away', 'points', 1)} color="error" size="small" variant="outlined">
+                                                        <Stack spacing="1" direction="row" justifyContent="center" sx={{gap: 1}}>
+                                                            <Button onClick={() => handleClickOpen('away', 'points', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 +1
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'points', 2)} color="error" size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'points', 2)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 +2
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'points', 3)} color="error" size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'points', 3)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 +3
                                                             </Button>
                                                         </Stack>
 
-                                                        <Stack spacing="1" direction="row" justifyContent="center" className="my-3">
-                                                            <Button onClick={() => handleClickOpen('away', 'rebounds', 1)} color="error" size="small" variant="outlined">
+                                                        <Stack spacing="1" direction="row" justifyContent="center"  sx={{gap: 1}} className="my-3">
+                                                            <Button onClick={() => handleClickOpen('away', 'rebounds', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 rebound
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'blocks', 1)} color="error" size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'assists', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                                assits
+                                                            </Button>
+                                                            <Button onClick={() => handleClickOpen('away', 'blocks', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 block
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'steals', 1)} color="error" size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'steals', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 steal
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'fouls', 1)} color="error" size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'fouls', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
                                                                 foul
                                                             </Button>
 
