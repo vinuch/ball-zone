@@ -4,6 +4,7 @@ import * as React from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import supabase from '@/lib/supabase';
+import { formatDistance } from 'date-fns';
 import { Avatar, Box, Button, Card, CardActionArea, CardActions, CardContent, CardMedia, Divider, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -212,6 +213,22 @@ export default function LeagueId() {
         createData('Gingerbread', 356, 16.0, 49, 3.9),
     ];
 
+    function formatTimestamp(timestamp: string) {
+        const months = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        const date = new Date(timestamp);
+        const dayOfWeek = days[date.getUTCDay()];
+        const dayOfMonth = date.getUTCDate();
+        const month = months[date.getUTCMonth()];
+
+        return `${dayOfWeek}, ${dayOfMonth} ${month}`;
+    }
+
     return (
         <div>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -273,12 +290,12 @@ export default function LeagueId() {
 
                                                                 <Divider orientation="vertical" flexItem />
                                                                 <div className="ml-2 md:w-4/12  w-3/12">
-                                                                    <Typography variant="caption" textAlign="center" >
-                                                                        Today
-                                                                    </Typography><br />
-                                                                    <Typography variant="caption" >
-                                                                        Tue, 7 Nov
-                                                                    </Typography>
+                                                                <Typography variant="caption" textAlign="center" >
+                                                            {formatDistance(new Date(game.created_at), new Date(), { addSuffix: true })}
+                                                        </Typography><br />
+                                                        <Typography variant="caption" >
+                                                            {formatTimestamp(game.created_at)}
+                                                        </Typography>
                                                                 </div>
                                                             </Box>
                                                         </CardContent>

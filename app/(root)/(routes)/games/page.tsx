@@ -2,6 +2,7 @@
 
 import { Autocomplete, Box, Button, Card, CardActionArea, CardContent, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, FormControl, FormControlLabel, FormGroup, FormLabel, Grid, Input, MenuItem, OutlinedInput, Radio, RadioGroup, Select, SelectChangeEvent, TextField, Typography, createFilterOptions } from '@mui/material'
 import React, { useEffect } from 'react'
+import { formatDistance } from 'date-fns';
 import Paper from '@mui/material/Paper';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -181,7 +182,7 @@ export default function MyGames() {
             const [team, first_name] = data
             supabase
                 .from('Users')
-                .insert(data.filter(item => item.first_name.includes('(new)')).map(item => { return {first_name: item.first_name.slice(0, -5)}})).select().then(userRes => {
+                .insert(data.filter(item => item.first_name.includes('(new)')).map(item => { return { first_name: item.first_name.slice(0, -5) } })).select().then(userRes => {
                     userRes.data.forEach(item => {
                         data.find(p => p.first_name === `${item.first_name}(new)`).id = item.user_id
                     })
@@ -189,7 +190,7 @@ export default function MyGames() {
                         .from('teams')
                         .insert([newHomeTeam, newAwayTeam])
                         .select().then(async teamRes => {
-                            console.log({ home_team_id: teamRes.data[0].id, away_team_id: teamRes.data[1].id },data)
+                            console.log({ home_team_id: teamRes.data[0].id, away_team_id: teamRes.data[1].id }, data)
 
                             await supabase
                                 .from('team_user')
@@ -210,6 +211,23 @@ export default function MyGames() {
 
 
     }
+
+    function formatTimestamp(timestamp: string) {
+        const months = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        const date = new Date(timestamp);
+        const dayOfWeek = days[date.getUTCDay()];
+        const dayOfMonth = date.getUTCDate();
+        const month = months[date.getUTCMonth()];
+
+        return `${dayOfWeek}, ${dayOfMonth} ${month}`;
+    }
+
 
     const filter = createFilterOptions<FilmOptionType>();
     return (
@@ -237,7 +255,7 @@ export default function MyGames() {
                                                                 {/* <Typography variant="subtitle1" >
                         img
                     </Typography> */}
-                                                                {game.home_team?.logo && <Image width={20} height={20} className=" mr-2" alt="Empty"  src={game.home_team?.logo} />}
+                                                                {game.home_team?.logo && <Image width={20} height={20} className=" mr-2" alt="Empty" src={game.home_team?.logo} />}
                                                                 <Typography variant="subtitle1" >
                                                                     {game.home_team?.name}
                                                                 </Typography>
@@ -248,7 +266,7 @@ export default function MyGames() {
                                                         </div>
                                                         <div className="flex justify-between items-center">
                                                             <div className="flex items-center">
-                                                            {game.away_team?.logo && <Image width={20} height={20} className=" mr-2" alt="Empty" src={game.away_team?.logo} />}
+                                                                {game.away_team?.logo && <Image width={20} height={20} className=" mr-2" alt="Empty" src={game.away_team?.logo} />}
 
                                                                 {/*  */}
                                                                 <Typography variant="subtitle1" >
@@ -265,10 +283,10 @@ export default function MyGames() {
                                                     <Divider orientation="vertical" flexItem />
                                                     <div className="ml-2 md:w-4/12  w-3/12">
                                                         <Typography variant="caption" textAlign="center" >
-                                                            Today
+                                                            {formatDistance(new Date(game.created_at), new Date(), { addSuffix: true })}
                                                         </Typography><br />
                                                         <Typography variant="caption" >
-                                                            Tue, 7 Nov
+                                                            {formatTimestamp(game.created_at)}
                                                         </Typography>
                                                     </div>
                                                 </Box>
@@ -331,7 +349,6 @@ export default function MyGames() {
                                             setHomeTeamPlayers(newValue.inputValue)
                                         } else {
 
-                                            console.log(newValue)
                                             setHomeTeamPlayers(newValue.map(item => item.user_id || item.inputValue))
 
                                         }
@@ -341,7 +358,7 @@ export default function MyGames() {
 
                                         const { inputValue } = params;
                                         // Suggest the creation of a new value
-                                        const isExisting = options.some((option) => `${option.first_name} ${option.last_name}`.includes(inputValue));
+                                        const isExisting = options.some((option) => `${option.first_name}`.toLowerCase().includes(inputValue.toLowerCase()));
                                         if (inputValue !== '' && !isExisting) {
                                             filtered.push({
                                                 inputValue: `${inputValue}(new)`,
@@ -369,7 +386,7 @@ export default function MyGames() {
                                         // Regular option
                                         return option.first_name;
                                     }}
-                                    renderOption={(props, option) => <li {...props}>{option.first_name}</li>}
+                                    renderOption={(props, option) => <li {...props} key={option.user_id}>{option.first_name}</li>}
                                     freeSolo
                                     selectOnFocus
                                     clearOnBlur
@@ -377,11 +394,12 @@ export default function MyGames() {
                                     multiple
                                     id="tags-standard"
                                     options={players.filter(player => ![...awayTeamPlayers, refree].includes(player.user_id))}
-                                    defaultValue={undefined}
+
                                     renderInput={(params, idx) => (
                                         <TextField
-                                            {...params}
                                             key={idx}
+
+                                            {...params}
                                             variant="standard"
                                             label="Home Team Players"
                                             placeholder="Home players"
@@ -391,10 +409,9 @@ export default function MyGames() {
                                 />
 
                                 {/* AWAY TEAM  */}
-                                <h3 className="text-lg font-bold mb-2 mt-8">Away Team</h3>
+                                <h3 className="text-lg font-bold mb-2 mt-8">Away Teams</h3>
 
                                 <TextField id="outlined-basic" sx={{ marginBottom: 2 }} label="Away Team Name" placeholder="Enter name for away team " variant="outlined" fullWidth onChange={e => setNewAwayTeam({ ...newAwayTeam, name: e.target.value })} />
-
 
 
                                 <Autocomplete
@@ -444,7 +461,7 @@ export default function MyGames() {
                                         // Regular option
                                         return option.first_name;
                                     }}
-                                    renderOption={(props, option) => <li {...props}>{option.first_name}</li>}
+                                    renderOption={(props, option) => <li {...props} key={option.user_id}>{option.first_name}</li>}
                                     freeSolo
                                     selectOnFocus
                                     clearOnBlur
@@ -452,7 +469,7 @@ export default function MyGames() {
                                     multiple
                                     id="tags-standard"
                                     options={players.filter(player => ![...homeTeamPlayers, refree].includes(player.user_id))}
-                                    defaultValue={undefined}
+
                                     renderInput={(params, idx) => (
                                         <TextField
                                             {...params}

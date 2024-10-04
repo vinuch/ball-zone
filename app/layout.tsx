@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import CssBaseline from '@mui/material/CssBaseline';
+import { useEffect, useState } from 'react';
 
 
 
@@ -19,13 +20,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
 
+
+  // useEffect(() => {
+  //   runOneSignal();
+  // })
+
+
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <CssBaseline />
-          {children}
-          <Analytics />
-       </body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   )
 }

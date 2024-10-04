@@ -4,6 +4,7 @@ import * as z from "zod";
 
 import React, { use, useState } from "react";
 
+import { usePathname } from 'next/navigation'
 import supabase from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
@@ -22,43 +23,44 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns"
 import Image from "next/image";
 import { useSnackbar } from "notistack";
+
+type Team = {
+    name: string
+    location: string
+    logo: string
+}
+
 const formSchema = z.object({
-    first_name: z.string().min(1, {
-        message: "first_name is required.",
+    name: z.string().min(1, {
+        message: "name is required.",
     }),
-    last_name: z.string().min(1, {
-        message: "last name is required.",
-    }),
+  
     // position: z.string().optional(),
     // DOB: z.string().optional(),
-    height: z.string(),
-    weight: z.string(),
-    profile_img: z.string().min(1, {
-        message: "profile image is required",
-    })
+    location: z.string(),
+    logo: z.string()
 })
 
 
-export default function Profile() {
+export default function TeamPage() {
     const [open, setOpen] = useState(false)
     const [editing, setEditing] = useState(false)
     const [date, setDate] = React.useState<Date>()
-    const [appUser, setAppUser] = useState(null)
+    const [team, setTeam] = useState<Team>({})
     const [authUserID, setAuthUserId] = useState()
     const [loading, setLoading] = useState(false)
 
     const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
+    const pathname = usePathname();
+    const teamId = pathname.split('/')[2]
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            first_name: "",
-            last_name: "",
-            position: "",
-            height: "",
-            weight: "",
-            profile_img: "",
-            DOB: ""
+            name: "",
+            logo: "",
+            location: "",
         }
     });
 
@@ -66,19 +68,34 @@ export default function Profile() {
     useEffect(() => {
         const fetchUser = async () => {
             setLoading(true)
-            await supabase.auth.getSession().then(async ({ data: { session } }) => {
-                setAuthUserId(session?.user.id)
-                await supabase
-                    .from('Users')
-                    .select()
-                    .eq("auth_user", session?.user.id).then(res => {
-                        console.log(res)
-                        if(!res.data!.length) {setAppUser(null); return}
-                        setAppUser(res.data![0]);
-                        const data = res.data![0];
-                        form.reset({ ...data, weight: String(data.weight), height: String(data.height) })
-                    })
-            })
+            console.log(teamId)
+            // if (user != 'profile') {
+            //     await supabase
+            //         .from('Users')
+            //         .select()
+            //         .or(`user_id.eq.${user}`).then(res => {
+            //             console.log(res)
+            //             if (!res.data!.length) { setAppUser(null); return }
+            //             setAppUser(res.data![0]);
+            //             const data = res.data![0];
+            //             form.reset({ ...data, weight: String(data.weight), height: String(data.height) })
+            //         })
+            // } else {
+            // await supabase.auth.getSession().then(async ({ data: { session } }) => {
+            //     setAuthUserId(session?.user.id)
+            await supabase
+                .from('teams')
+                .select()
+                .eq("id", teamId).then(res => {
+                    console.log(res)
+                    if (!res.data!.length) { setTeam(null); return }
+                    setTeam(res.data![0]);
+                    const data = res.data![0];
+                    form.reset(data)
+                })
+            // })
+            // }
+
             setLoading(false)
 
 
@@ -102,48 +119,36 @@ export default function Profile() {
     // console.log(user)
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
-        const { first_name, last_name, height, weight, profile_img } = values
+        const { name, location, logo } = values
 
-        if (appUser) {
             const { data, error } = await supabase
-                .from('Users')
+                .from('teams')
                 .update([
-                    { first_name, last_name, height, weight, profile_img },
+                    { name, location, logo},
                 ])
-                .eq("user_id", appUser.user_id)
+                .eq("id", teamId)
                 .select()
-            setAppUser(data![0])
+            setTeam(data![0])
             enqueueSnackbar('Profile Updated', { variant: 'success' })
             setEditing(false)
-        } else {
-            const { data, error } = await supabase
-                .from('Users')
-                .insert([
-                    { first_name, last_name, height, weight, profile_img, auth_user: authUserID },
-                ])
-                .select()
-            setAppUser(data![0])
-
-            enqueueSnackbar('Profile Created', { variant: 'success' })
-
-        }
+    
 
 
     }
 
 
-    if (!appUser && loading) {
+    if (loading) {
         return <div className="flex justify-center items-center"><CircularProgress />
-            </div>
+        </div>
     }
     return (
         <Container component="main" maxWidth="sm" sx={{ mb: 4 }}>
             <Paper variant="outlined" sx={{ my: { xs: 3, md: 6 }, p: { xs: 2, md: 3 } }}>
                 <div>
                     {
-                        appUser && !editing ? <div className="w">
+                         !editing ? <div className="w">
                             <Typography variant="h6" gutterBottom>
-                                Player Profile
+                                Team Profile
                             </Typography>
                             <Grid container spacing={3} className="w-full">
                                 <Grid item xs={12} sm={12}>
@@ -152,7 +157,7 @@ export default function Profile() {
                                             <Image
                                                 fill
                                                 alt="Uplaod"
-                                                src={appUser.profile_img || "/placeholder.svg"}
+                                                src={team.logo || "/placeholder.svg"}
                                                 className="rounded-lg object-cover"
                                             />
                                         </div>
@@ -160,22 +165,19 @@ export default function Profile() {
 
                                 </Grid>
 
-                                <Grid item xs={6}>
-                                    <p>First Name</p>
-                                    <p>{appUser.first_name}</p>
+                                <Grid item xs={12}>
+                                    <p>Name</p>
+                                    <p>{team.name}</p>
                                 </Grid>
-                                <Grid item xs={6}>
+                                {/* <Grid item xs={6}>
                                     <p>Last Name</p>
-                                    <p>{appUser.last_name}</p>
-                                </Grid>
+                                    <p>{team.last_name}</p>
+                                </Grid> */}
                                 <Grid item xs={6}>
-                                    <p>Height</p>
-                                    <p>{appUser.height}</p>
+                                    <p>Location</p>
+                                    <p>{team.location}</p>
                                 </Grid>
-                                <Grid item xs={6}>
-                                    <p>Weight</p>
-                                    <p>{appUser.weight}</p>
-                                </Grid>
+
 
                                 <Grid item xs={12}>
                                     <Button type="submit" variant="outlined" className="w-full" onClick={() => setEditing(true)}>Edit Profile</Button>
@@ -184,14 +186,14 @@ export default function Profile() {
                         </div> : <div className="mt-6">
                             <React.Fragment>
                                 <Typography variant="h6" gutterBottom>
-                                    {editing ? 'Edit' : 'Create'} Player Profile
+                                    {editing ? 'Edit' : 'Create'} Team Profile
                                 </Typography>
                                 <Form {...form}>
                                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-10">
 
                                         <Grid container spacing={3}>
                                             <Grid item xs={12} sm={12}>
-                                                <FormField name="profile_img" render={({ field }) => (
+                                                <FormField name="logo" render={({ field }) => (
                                                     <FormItem className="flex flex-col items-center justify-center space-y-4">
                                                         <ImageUpload disabled={isLoading} onChange={field.onChange} value={field.value} />
                                                         <FormMessage />
@@ -199,17 +201,36 @@ export default function Profile() {
                                                     </FormItem>
                                                 )} />
                                             </Grid>
-                                            <Grid item xs={12} sm={6}>
+                                            <Grid item xs={12} sm={12}>
                                                 <FormField
-                                                    name="first_name"
+                                                    name="name"
                                                     control={form.control}
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel>First Name</FormLabel>
+                                                            <FormLabel>Name</FormLabel>
+                                                            <FormControl>
+                                                                <Input disabled={isLoading} placeholder="Lakers" {...field} />
+                                                            </FormControl>
+
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </Grid>
+                            
+
+                                            <Grid item xs={12}>
+                                                <FormField
+                                                    name="location"
+                                                    control={form.control}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Location</FormLabel>
                                                             <FormControl>
                                                                 <Input
                                                                     disabled={isLoading}
-                                                                    placeholder="Lebron"
+                                                                    type="text"
+                                                                    placeholder="surulere, lagos"
                                                                     {...field}
                                                                 />
                                                             </FormControl>
@@ -219,69 +240,8 @@ export default function Profile() {
                                                     )}
                                                 />
                                             </Grid>
-                                            <Grid item xs={12} sm={6}>
-                                                <FormField
-                                                    name="last_name"
-                                                    control={form.control}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Last Name</FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    disabled={isLoading}
-                                                                    placeholder="James"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
+                                       
 
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </Grid>
-
-                                            <Grid item xs={6}>
-                                                <FormField
-                                                    name="height"
-                                                    control={form.control}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Height</FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    disabled={isLoading}
-                                                                    type="number"
-                                                                    placeholder="6.4"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <FormField
-                                                    name="weight"
-                                                    control={form.control}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Weight</FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    disabled={isLoading}
-                                                                    type="number"
-                                                                    placeholder="64"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </Grid>
 
                                             {editing ? <>
                                                 <Grid item xs={6}>
@@ -303,6 +263,7 @@ export default function Profile() {
                     }
 
                 </div>
+                {/* {appUser && } */}
             </Paper>
         </Container>
 

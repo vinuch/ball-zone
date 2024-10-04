@@ -1,6 +1,6 @@
 "use client"
 
-import { AppBar, Avatar, Box, Button, CircularProgress, Container, CssBaseline, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Radio, RadioGroup, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Toolbar, Typography } from '@mui/material';
+import { AppBar, Autocomplete, Avatar, Box, Button, CircularProgress, Container, CssBaseline, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Radio, RadioGroup, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, TextField, Toolbar, Typography, createFilterOptions } from '@mui/material';
 import Paper from '@mui/material/Paper';
 import styled from '@emotion/styled'
 // import SelectPlayer from './components/select-player';
@@ -17,6 +17,7 @@ import { SnackbarProvider } from 'notistack';
 import { ArrowBackIos, Logout, Notifications } from '@mui/icons-material';
 import BottomNav from '@/components/BottomNav';
 import { useRouter } from 'next/navigation';
+import { PlusIcon } from 'lucide-react';
 
 
 export interface ConfirmationDialogRawProps {
@@ -45,9 +46,32 @@ export interface SimpleDialogProps {
 
 function SimpleDialog(props: SimpleDialogProps) {
     const { onClose, selectedValue, open, homePlayers, awayPlayers, team } = props;
+    const [open2, setOpen2] = useState(false)
+    const [homeTeamPlayers, setHomeTeamPlayers] = React.useState(homePlayers);
+    const [awayTeamPlayers, setAwayTeamPlayers] = React.useState(awayPlayers);
+    const [players, setPlayers] = React.useState<[]>([]);
 
+    useEffect(() => {
+        const fetchPlayers = async () => {
+            let { data: players } = await supabase
+                .from('Users')
+                .select(`
+                *
+       
+              `)
+            // console.log(players?.map(item => item.user)) 
+
+            setPlayers(players?.map(item => item))
+        }
+
+        fetchPlayers()
+
+    }, [])
     const handleClose = () => {
         onClose(null);
+    };
+    const handleCloseAddPlayer = () => {
+        setOpen2(false)
     };
 
     const handleListItemClick = (value: string) => {
@@ -61,6 +85,13 @@ function SimpleDialog(props: SimpleDialogProps) {
         playerList = awayPlayers
 
     }
+
+    function handleAddPlayerClick() {
+        setOpen2(true)
+    }
+
+    const filter = createFilterOptions<FilmOptionType>();
+
     return (
         <Dialog fullWidth onClose={handleClose} open={open}>
             <DialogTitle>Select player</DialogTitle>
@@ -77,6 +108,105 @@ function SimpleDialog(props: SimpleDialogProps) {
                         </ListItemButton>
                     </ListItem>
                 ))}
+                <ListItem disableGutters key="new">
+                    <ListItemButton onClick={() => handleAddPlayerClick()}>
+                        <ListItemAvatar>
+                            <Avatar sx={{ bgcolor: blue[100], color: blue[600] }}>
+                                <PlusIcon />
+                            </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText primary={`Add Player`} />
+                    </ListItemButton>
+                </ListItem>
+                <Dialog fullWidth maxWidth="xs" onClose={handleCloseAddPlayer} open={open2} >
+
+                    <DialogTitle>Add player</DialogTitle>
+                    {JSON.stringify(homePlayers)}
+                    <div className="p-4">
+
+                        <Autocomplete
+                            value={playerList}
+                            key='away'
+                            onChange={(event, newValue) => {
+                                if (team == 'home') {
+                                    if (typeof newValue === 'string') {
+                                        setHomeTeamPlayers(newValue)
+                                    } else if (newValue && newValue.inputValue) {
+
+                                        setHomeTeamPlayers(newValue.inputValue)
+                                    } else {
+
+                                        setHomeTeamPlayers(newValue.map(item => item.user_id || item.inputValue))
+
+                                    }
+                                } else if (team == 'away') {
+                                    if (typeof newValue === 'string') {
+                                        setAwayTeamPlayers(newValue.map(item => item.user_id))
+                                    } else if (newValue && newValue.inputValue) {
+                                        setAwayTeamPlayers(newValue.inputValue.map(item => item.user_id))
+                                    } else {
+                                        setAwayTeamPlayers(newValue.map(item => item.user_id || item.inputValue))
+
+                                    }
+                                }
+                            }}
+                            filterOptions={(options, params) => {
+                                const filtered = filter(options, params);
+
+                                const { inputValue } = params;
+                                // Suggest the creation of a new value
+                                const isExisting = options.some((option) => `${option.first_name} ${option.last_name}`.includes(inputValue));
+                                if (inputValue !== '' && !isExisting) {
+                                    filtered.push({
+                                        inputValue: `${inputValue}(new)`,
+                                        first_name: `Add "${inputValue}"`,
+                                    });
+                                }
+
+                                return filtered;
+                            }}
+                            getOptionLabel={(option) => {
+                                // Value selected with enter, right from the input
+
+                                // console.log(option)
+                                // return 'hi'
+                                if (typeof option === 'string') {
+                                    return option;
+                                }
+                                // Add "xxx" option created dynamically
+                                if (option.inputValue) {
+
+                                    return option.inputValue;
+                                }
+
+
+                                // Regular option
+                                return option.first_name;
+                            }}
+                            renderOption={(props, option) => <li {...props} key={option.user_id}>{option.player.first_name} {console.log(option)}</li>}
+                            freeSolo
+                            selectOnFocus
+                            clearOnBlur
+                            handleHomeEndKeys
+                            multiple
+                            id="tags-standard"
+                            options={homeTeamPlayers.map(item => item.player)}
+
+                            renderInput={(params, idx) => (
+                                <TextField
+                                    {...params}
+                                    key={idx}
+                                    variant="standard"
+                                    label="Away Team Players"
+                                    placeholder="Away players"
+                                // onKeyDown={handleClickEnter}
+                                />
+
+                            )}
+                        />
+                    </div>
+
+                </Dialog>
                 {/* <ListItem disableGutters>
                     <ListItemButton
                         autoFocus
@@ -425,8 +555,8 @@ export default function Scoreboard() {
                                         }
                                     }}>
                                     <div>
-                                        {/* <div className="text-center text-4xl font-bold my-4">10:00 <span className="text-red-600">25 (WIP)</span></div>
-                            <p className="text-center">First Quater</p> */}
+                                        <div className="text-center text-4xl font-bold my-4">10:00 <span className="text-red-600">25 (WIP)</span></div>
+                                        <p className="text-center">First Quater</p>
                                         <div className="flex my-6 items-center justify-center flex-wrap w-full">
                                             <div className="w-full my-6 md:w-5/12">
                                                 <p className="text-center text-3xl font-bold">{home_ongoing_score()}</p>
@@ -436,7 +566,7 @@ export default function Scoreboard() {
                                                 {
                                                     game?.referee == appUser?.user_id && (<div className="my-6">
 
-                                                        <Stack spacing="1" direction="row" justifyContent="center" sx={{gap: 1}}>
+                                                        <Stack spacing="1" direction="row" justifyContent="center" sx={{ gap: 1 }}>
                                                             <Button onClick={() => handleClickOpen('home', 'points', 1)} color="error" size="small" variant="outlined">
                                                                 +1
                                                             </Button>
@@ -448,20 +578,20 @@ export default function Scoreboard() {
                                                             </Button>
                                                         </Stack>
 
-                                                        <Stack spacing="2" direction="row" sx={{gap: 1}} justifyContent="center" className="my-3">
-                                                            <Button onClick={() => handleClickOpen('home', 'rebounds', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                        <Stack spacing="2" direction="row" sx={{ gap: 1 }} justifyContent="center" className="my-3">
+                                                            <Button onClick={() => handleClickOpen('home', 'rebounds', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 rebound
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('home', 'assists', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('home', 'assists', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 assists
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('home', 'blocks', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('home', 'blocks', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 block
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('home', 'steals', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('home', 'steals', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 steal
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('home', 'fouls', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('home', 'fouls', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 foul
                                                             </Button>
                                                         </Stack>
@@ -492,32 +622,32 @@ export default function Scoreboard() {
                                                 {
                                                     game?.referee == appUser?.user_id &&
                                                     <div className="my-6">
-                                                        <Stack spacing="1" direction="row" justifyContent="center" sx={{gap: 1}}>
-                                                            <Button onClick={() => handleClickOpen('away', 'points', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                        <Stack spacing="1" direction="row" justifyContent="center" sx={{ gap: 1 }}>
+                                                            <Button onClick={() => handleClickOpen('away', 'points', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 +1
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'points', 2)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'points', 2)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 +2
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'points', 3)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'points', 3)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 +3
                                                             </Button>
                                                         </Stack>
 
-                                                        <Stack spacing="1" direction="row" justifyContent="center"  sx={{gap: 1}} className="my-3">
-                                                            <Button onClick={() => handleClickOpen('away', 'rebounds', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                        <Stack spacing="1" direction="row" justifyContent="center" sx={{ gap: 1 }} className="my-3">
+                                                            <Button onClick={() => handleClickOpen('away', 'rebounds', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 rebound
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'assists', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'assists', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 assits
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'blocks', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'blocks', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 block
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'steals', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'steals', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 steal
                                                             </Button>
-                                                            <Button onClick={() => handleClickOpen('away', 'fouls', 1)} color="error" sx={{fontSize: 10}} size="small" variant="outlined">
+                                                            <Button onClick={() => handleClickOpen('away', 'fouls', 1)} color="error" sx={{ fontSize: 10 }} size="small" variant="outlined">
                                                                 foul
                                                             </Button>
 
