@@ -67,7 +67,7 @@ const RootLayout = ({ children }: {
                     </AppBar>
 
                 </Box>
-                <div className="my-20">
+                <div className="my-14">
                     {children}
 
                 </div>

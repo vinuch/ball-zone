@@ -74,3 +74,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+@font-face {
+  font-family: 'ds_digital';
+  src: url('/fonts/ds_digital/DS-DIGI.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ds_digital_bold';
+  src: url('/fonts/ds_digital/DS-DIGIB.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
