@@ -43,7 +43,7 @@ import {
 import Paper from "@mui/material/Paper";
 import styled from "@emotion/styled";
 // import SelectPlayer from './components/select-player';
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import PersonIcon from "@mui/icons-material/Person";
 import AddIcon from "@mui/icons-material/Add";
@@ -69,6 +69,7 @@ import { PlusIcon } from "lucide-react";
 import Timer from "./components/Timer";
 import { FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import Link from "next/link";
+import LoadingButton from "@mui/lab/LoadingButton";
 
 export interface ConfirmationDialogRawProps {
   id: string;
@@ -104,6 +105,7 @@ export interface NextSetDialogProps {
 function SimpleDialog(props: SimpleDialogProps) {
   const {
     onClose,
+    onAddPlayer,
     selectedValue,
     open,
     homePlayers,
@@ -155,9 +157,11 @@ function SimpleDialog(props: SimpleDialogProps) {
   }
 
   const [value, setValue] = useState<string[]>([]);
+  const [addPlayerLoading, setSddPlayerLoading] = useState<boolean>(false);
 
   const handleAddPlayers = async () => {
     // Create Users for the newly added ones
+    setSddPlayerLoading(true)
     const { data: userData, error: userError } = await supabase
       .from("Users")
       .insert(value.map((item) => ({ first_name: item })))
@@ -176,6 +180,9 @@ function SimpleDialog(props: SimpleDialogProps) {
       )
       .select();
 
+      setSddPlayerLoading(false)
+      onAddPlayer()
+      handleCloseAddPlayer(null)
     if (team_userError) throw team_userError;
   };
 
@@ -251,13 +258,24 @@ function SimpleDialog(props: SimpleDialogProps) {
               )}
             />
             <div className="flex justify-end">
-              <Button
+              {/* <Button
                 variant="contained"
                 className="bg-white my-4 "
                 onClick={handleAddPlayers}
               >
                 Add Players
-              </Button>
+              </Button> */}
+              <LoadingButton
+                loading={addPlayerLoading}
+                type="submit"
+                variant="contained"
+                className="bg-black my-4 text-white "
+                sx={{ mt: 3, mb: 2 }}
+                onClick={handleAddPlayers}
+
+            >
+                Add Players
+            </LoadingButton>
             </div>
           </div>
         </Dialog>
@@ -728,6 +746,125 @@ function CustomTabPanel(props: TabPanelProps) {
   );
 }
 
+const useGameDataFetcher = (
+  setGame: any,
+  setHomePlayers: any,
+  setAwayPlayers: any,
+  setHomePlayersStats: any,
+  setAwayPlayersStats: any,
+  setGameTeams: any,
+  setSubGames: any,
+  setAuthUserId: any,
+  setAppUser: any,
+  setLoading: any
+) => {
+  const fetchTeamPlayers = async (team_id: string) => {
+    const { data: players } = await supabase
+      .from("team_user")
+      .select(`
+        *,
+        player:Users!user_id(*)
+      `)
+      .eq("team_id", team_id);
+    return players;
+  };
+
+  const fetchTeamPlayersStats = async (game_id: string, team_id: string) => {
+    const { data: players } = await supabase
+      .from("game_player_stats")
+      .select(`
+        *,
+        player:Users!user_id(*)
+      `)
+      .eq("game_id", game_id)
+      .eq("team_id", team_id);
+    return players;
+  };
+
+  const fetchGames = async (gameId: string) => {
+    const { data } = await supabase
+      .from("Games")
+      .select(`
+        *,
+        home_team:teams!home_team_id(*),
+        away_team:teams!away_team_id(*)
+      `)
+      .eq("id", gameId);
+
+    if (data && data[0]) {
+      const game = data[0];
+      setGame(game);
+      
+      const [homePlayers, awayPlayers, homeStats, awayStats] = await Promise.all([
+        fetchTeamPlayers(game.home_team_id),
+        fetchTeamPlayers(game.away_team_id),
+        fetchTeamPlayersStats(game.id, game.home_team_id),
+        fetchTeamPlayersStats(game.id, game.away_team_id)
+      ]);
+
+      setHomePlayers(homePlayers);
+      setAwayPlayers(awayPlayers);
+      setHomePlayersStats(homeStats);
+      setAwayPlayersStats(awayStats);
+    }
+  };
+
+  const fetchGameTeams = async (parentGameId: string) => {
+    const { data } = await supabase
+      .from("teams")
+      .select("*")
+      .eq("parent_game_id", parentGameId);
+    setGameTeams(data);
+  };
+
+  const fetchSubGames = async (parentGameId: string) => {
+    const { data } = await supabase
+      .from("Games")
+      .select("*")
+      .or([
+        { parent_game_id: parentGameId },
+        { id: parentGameId }
+      ]);
+    setSubGames(data);
+  };
+
+  const fetchUser = async () => {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user.id) {
+      setAuthUserId(session.user.id);
+      const { data } = await supabase
+        .from("Users")
+        .select()
+        .eq("auth_user", session.user.id);
+
+      if (!data?.length) {
+        setAppUser(null);
+      } else {
+        setAppUser(data[0]);
+      }
+    }
+    setLoading(false);
+  };
+
+  const fetchAllGameData = useCallback(async ({ parentGameId, gameId }: FetchGameDataParams) => {
+    try {
+      await fetchUser();
+      await Promise.all([
+        fetchGames(gameId),
+        fetchGameTeams(parentGameId),
+        fetchSubGames(parentGameId)
+      ]);
+    } catch (error) {
+      console.error('Error fetching game data:', error);
+    }
+  }, []);
+
+  return { fetchAllGameData };
+};
+
+
 export default function Scoreboard() {
   // console.log(supabase)
   const [open, setOpen] = useState(false);
@@ -772,7 +909,7 @@ export default function Scoreboard() {
         .from("Games")
         .select("*")
         .or(`parent_game_id.eq.${parentGameId},id.eq.${parentGameId}`)
-        .eq("game_order", gameOrder);
+        .eq("game_order", gameOrder || 1);
 
       setGameId(data[0].id);
     };
@@ -835,128 +972,149 @@ export default function Scoreboard() {
     };
   }
 
+  const { fetchAllGameData } = useGameDataFetcher(
+    setGame,
+    setHomePlayers,
+    setAwayPlayers,
+    setHomePlayersStats,
+    setAwayPlayersStats,
+    setGameTeams,
+    setSubGames,
+    setAuthUserId,
+    setAppUser,
+    setLoading
+  );
+
   useEffect(() => {
-    const fetchTeamPlayers = async (team_id: string) => {
-      let { data: players, error } = await supabase
-        .from("team_user")
+    fetchAllGameData({ parentGameId, gameId });
+  }, [parentGameId, gameId, fetchAllGameData]);
 
-        .select(
-          `
-                *,
-                player:Users!user_id(*)
+  // Manual trigger function
+  const refreshGameData = () => {
+    fetchAllGameData({ parentGameId, gameId });
+  };
+  // useEffect(() => {
+  //   const fetchTeamPlayers = async (team_id: string) => {
+  //     let { data: players, error } = await supabase
+  //       .from("team_user")
 
-              `
-        )
-        // .eq('game_id', game_id)
-        .eq("team_id", team_id);
+  //       .select(
+  //         `
+  //               *,
+  //               player:Users!user_id(*)
 
-      return players;
-    };
-    const fetchTeamPlayersStats = async (game_id: string, team_id: string) => {
-      console.log(game_id);
-      let { data: players, error } = await supabase
-        .from("game_player_stats")
+  //             `
+  //       )
+  //       // .eq('game_id', game_id)
+  //       .eq("team_id", team_id);
 
-        .select(
-          `
-                *,
-                player:Users!user_id(*)
-              `
-        )
-        .eq("game_id", game_id)
-        .eq("team_id", team_id);
+  //     return players;
+  //   };
+  //   const fetchTeamPlayersStats = async (game_id: string, team_id: string) => {
+  //     console.log(game_id);
+  //     let { data: players, error } = await supabase
+  //       .from("game_player_stats")
 
-      return players;
-    };
-    // fetch game
-    const fetchGames = async () => {
-      await supabase
-        .from("Games")
-        .select(
-          `
-                *,
-                home_team:teams!home_team_id(*),
-                away_team:teams!away_team_id(*)
+  //       .select(
+  //         `
+  //               *,
+  //               player:Users!user_id(*)
+  //             `
+  //       )
+  //       .eq("game_id", game_id)
+  //       .eq("team_id", team_id);
 
-              `
-        )
-        .eq("id", gameId)
-        .then((res) => {
-            if(res.data){
-                let game = res.data![0];
-                setGame(game);
-                fetchTeamPlayers(game.home_team_id).then((res) =>
-                  setHomePlayers(res)
-                );
-                fetchTeamPlayers(game.away_team_id).then((res) =>
-                  setAwayPlayers(res)
-                );
+  //     return players;
+  //   };
+  //   // fetch game
+  //   const fetchGames = async () => {
+  //     await supabase
+  //       .from("Games")
+  //       .select(
+  //         `
+  //               *,
+  //               home_team:teams!home_team_id(*),
+  //               away_team:teams!away_team_id(*)
+
+  //             `
+  //       )
+  //       .eq("id", gameId)
+  //       .then((res) => {
+  //           if(res.data){
+  //               let game = res.data![0];
+  //               setGame(game);
+  //               fetchTeamPlayers(game.home_team_id).then((res) =>
+  //                 setHomePlayers(res)
+  //               );
+  //               fetchTeamPlayers(game.away_team_id).then((res) =>
+  //                 setAwayPlayers(res)
+  //               );
       
-                fetchTeamPlayersStats(game.id, game.home_team_id).then((res) =>
-                  setHomePlayersStats(res)
-                );
-                fetchTeamPlayersStats(game.id, game.away_team_id).then((res) =>
-                  setAwayPlayersStats(res)
-                );
-            }
+  //               fetchTeamPlayersStats(game.id, game.home_team_id).then((res) =>
+  //                 setHomePlayersStats(res)
+  //               );
+  //               fetchTeamPlayersStats(game.id, game.away_team_id).then((res) =>
+  //                 setAwayPlayersStats(res)
+  //               );
+  //           }
          
-        });
+  //       });
 
-      // setGame(Games![0])
-    };
+  //     // setGame(Games![0])
+  //   };
 
-    // fetch game teams
-    const fetchGameTeams = async () => {
-      let { data } = await supabase
-        .from("teams")
-        .select("*")
-        .eq("parent_game_id", parentGameId);
+  //   // fetch game teams
+  //   const fetchGameTeams = async () => {
+  //     let { data } = await supabase
+  //       .from("teams")
+  //       .select("*")
+  //       .eq("parent_game_id", parentGameId);
 
-      console.log(data, "game teams");
+  //     console.log(data, "game teams");
 
-      setGameTeams(data);
-      // setGame(Games![0])
-    };
-    const fetchSubGames = async () => {
-      let { data } = await supabase
-        .from("Games")
-        .select("*")
-        .or(`parent_game_id.eq.${parentGameId},id.eq.${parentGameId}`);
+  //     setGameTeams(data);
+  //     // setGame(Games![0])
+  //   };
+  //   const fetchSubGames = async () => {
+  //     let { data } = await supabase
+  //       .from("Games")
+  //       .select("*")
+  //       .or(`parent_game_id.eq.${parentGameId},id.eq.${parentGameId}`);
 
-      console.log(data, "sub games");
+  //     console.log(data, "sub games");
 
-      setSubGames(data);
-      // setGame(Games![0])
-    };
+  //     setSubGames(data);
+  //     // setGame(Games![0])
+  //   };
 
-    const fetchUser = async () => {
-      setLoading(true);
-      await supabase.auth.getSession().then(async ({ data: { session } }) => {
-        setAuthUserId(session?.user.id);
-        await supabase
-          .from("Users")
-          .select()
-          .eq("auth_user", session?.user.id)
-          .then((res) => {
-            console.log(res);
-            if (!res.data!.length) {
-              setAppUser(null);
-              return;
-            }
-            setAppUser(res.data![0]);
-            console.log(res.data![0]);
-            const data = res.data![0];
-          });
-      });
-      setLoading(false);
-    };
-    fetchUser();
+  //   const fetchUser = async () => {
+  //     setLoading(true);
+  //     await supabase.auth.getSession().then(async ({ data: { session } }) => {
+  //       setAuthUserId(session?.user.id);
+  //       await supabase
+  //         .from("Users")
+  //         .select()
+  //         .eq("auth_user", session?.user.id)
+  //         .then((res) => {
+  //           console.log(res);
+  //           if (!res.data!.length) {
+  //             setAppUser(null);
+  //             return;
+  //           }
+  //           setAppUser(res.data![0]);
+  //           console.log(res.data![0]);
+  //           const data = res.data![0];
+  //         });
+  //     });
+  //     setLoading(false);
+  //   };
+  //   fetchUser();
 
-    // fetch game stats
-    fetchGames();
-    fetchGameTeams();
-    fetchSubGames();
-  }, [gameId]);
+  //   // fetch game stats
+  //   fetchGames();
+  //   fetchGameTeams();
+  //   fetchSubGames();
+  // }, [parentGameId, gameId]);
 
   const addPoint = (points: number, player_id: string, league_id: string) => {};
 
@@ -1719,6 +1877,7 @@ export default function Scoreboard() {
                       open={open}
                       team={activeTeam}
                       activeTeamId={activeTeamId}
+                      onAddPlayer={() =>  fetchAllGameData({ parentGameId, gameId })}
                       onClose={handleClose}
                     />
                     <AddTeamDialog
