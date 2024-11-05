@@ -1,6 +1,6 @@
 // components/Timer.js
 import { Pause, PlayArrow, Replay, ResetTv, Stop } from "@mui/icons-material";
-import { Button } from "@mui/material";
+import { Button, TextField } from "@mui/material";
 import { useState, useEffect, Dispatch, SetStateAction } from "react";
 
 type TimerProps = {
@@ -11,11 +11,12 @@ type TimerProps = {
 export default function Timer({toggleNextSetModal, setIsFinished, isFinished}: TimerProps) {
   const [time, setTime] = useState(10);
   const [isRunning, setIsRunning] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   // const [isFinished, setIsFinished] = useState(false);
 
 
   useEffect(() => {
-    let timer;
+    let timer : any;
     if (isRunning) {
       timer = setInterval(() => {
         setTime((prevTime) => {
@@ -46,16 +47,38 @@ export default function Timer({toggleNextSetModal, setIsFinished, isFinished}: T
     setIsFinished(false);
     setTime(10);
   };
+  const handleTimeChange = (event: any) => {
+    const newTime = parseInt(event.target.value, 10);
+    if (!isNaN(newTime)) setTime(newTime);
+  };
 
   const {minutes, seconds} = formatTime(time)
-
+  const handleTimeClick = () => setIsEditing(true);
+  const handleTimeSubmit = () => setIsEditing(false);
   return (
     <div>
       <div
         className="text-center text-6xl font-bold my-4 font-ds_digi"
         style={{ fontFamily: "ds_digital" }}
       >
-        {isFinished && !isRunning ? 'GAME': minutes}:<span className="text-red-600">{isFinished && !isRunning ? 'OVER' : seconds}</span>
+              <div onClick={handleTimeClick}>
+        {isEditing ? (
+          <TextField
+            type="number"
+            value={time}
+            onChange={handleTimeChange}
+            onBlur={handleTimeSubmit}
+            inputProps={{ min: 0 }}
+            autoFocus
+          />
+        ) : (
+          <span>
+            {isFinished && !isRunning ? "GAME" : minutes}:
+            <span className="text-red-600"> {isFinished && !isRunning ? "OVER" : seconds}</span>
+          </span>
+        )}
+      </div>
+        {/* {isFinished && !isRunning ? 'GAME': minutes}:<span className="text-red-600">{isFinished && !isRunning ? 'OVER' : seconds}</span> */}
       </div>
       {time === 10 ? (
         <div className="flex justify-center my-2">
@@ -104,7 +127,7 @@ export default function Timer({toggleNextSetModal, setIsFinished, isFinished}: T
   );
 }
 
-function formatTime(seconds) {
+function formatTime(seconds: any) {
   const minutes = String(Math.floor(seconds / 60)).padStart(2, '0');
   const remainingSeconds = String(seconds % 60).padStart(2, '0');
   return { minutes, seconds: remainingSeconds };
